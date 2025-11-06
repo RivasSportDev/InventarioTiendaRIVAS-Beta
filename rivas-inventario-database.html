@@ -1,0 +1,507 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Tienda Rivas — Inventario Camisas</title>
+<style>
+  :root{
+    --bg:#f6f8fb;
+    --card:#ffffff;
+    --muted:#6b7280;
+    --accent:#1b2430;
+    --accent-2:#bcd4e6;
+    --success:#16a34a;
+    --danger:#ef4444;
+    --glass: rgba(255,255,255,0.6);
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  }
+  html,body{height:100%;margin:0;background:linear-gradient(180deg, #f8fbff 0%, #f3f6fa 100%);color:#0f172a;}
+  .app{
+    max-width:1100px;
+    margin:20px auto;
+    padding:18px;
+    box-sizing:border-box;
+  }
+  header{
+    display:flex;
+    gap:12px;
+    align-items:center;
+    margin-bottom:14px;
+  }
+  header img{width:48px;height:48px;border-radius:8px;object-fit:cover}
+  header h1{font-size:20px;margin:0}
+  header p{margin:0;font-size:13px;color:var(--muted)}
+  .panel{
+    background:var(--card);
+    border-radius:12px;
+    padding:12px;
+    box-shadow:0 6px 18px rgba(11,22,39,0.06);
+  }
+  .grid{
+    display:grid;
+    gap:12px;
+  }
+
+  /* Form & controls */
+  .controls{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    align-items:center;
+  }
+  label.small{font-size:12px;color:var(--muted)}
+  select,input,textarea{
+    padding:8px 10px;
+    border-radius:8px;
+    border:1px solid #e6eef9;
+    background:linear-gradient(180deg,#fff,#fbfdff);
+    min-width:140px;
+    box-sizing:border-box;
+    font-size:14px;
+  }
+  input[type="number"]{width:120px}
+  .btn{
+    padding:8px 12px;border-radius:10px;border:0;font-weight:600;cursor:pointer;
+  }
+  .btn.primary{background:var(--accent);color:white}
+  .btn.ghost{background:transparent;border:1px solid #e6eef9;color:var(--accent)}
+  .btn.warn{background:#f59e0b;color:white}
+  .btn.danger{background:var(--danger);color:white}
+  .btn.small{padding:6px 8px;font-size:13px}
+  .row{display:flex;gap:8px;flex-wrap:wrap}
+  .col{flex:1;min-width:120px}
+
+  /* inventory list */
+  .list{
+    margin-top:12px;
+  }
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{padding:10px;border-bottom:1px solid #eef4fb;text-align:left}
+  th{font-size:12px;color:var(--muted);font-weight:600}
+  tr:hover td{background:linear-gradient(90deg, rgba(188,212,230,0.18), rgba(255,255,255,0));}
+
+  .actions{display:flex;gap:8px}
+  .badge{display:inline-block;padding:6px 8px;border-radius:999px;font-size:12px;background:#f3f5f9;color:#0f172a;border:1px solid #eef4fb}
+
+  /* responsive cards for small screens */
+  @media (max-width:720px){
+    table{display:none}
+    .cards{display:grid;grid-template-columns:1fr;gap:10px}
+    .card{background:var(--card);padding:10px;border-radius:10px;box-shadow:0 6px 18px rgba(11,22,39,0.04)}
+    .card .meta{display:flex;justify-content:space-between;gap:8px;align-items:center}
+    .card .meta .left{display:flex;gap:8px;flex-direction:column}
+    .card .meta .right{display:flex;gap:6px;align-items:center}
+  }
+  @media (min-width:721px){
+    .cards{display:none}
+  }
+
+  /* form modal */
+  .modal{
+    position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(8,12,20,0.45);
+    z-index:40;padding:18px;visibility:hidden;opacity:0;transition:all .15s ease;
+  }
+  .modal.open{visibility:visible;opacity:1}
+  .modal .inner{
+    width:980px;max-width:98%;background:var(--card);padding:14px;border-radius:12px;box-shadow:0 12px 40px rgba(8,12,20,0.35)
+  }
+  .flex{display:flex;gap:12px;align-items:center}
+  .muted{color:var(--muted);font-size:13px}
+
+  footer{margin-top:14px;font-size:13px;color:var(--muted);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+  .small-note{font-size:12px;color:var(--muted)}
+
+  /* import area */
+  .import-area{display:flex;gap:8px;align-items:center}
+  .file-input{display:none}
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+
+</head>
+<body>
+
+
+
+<div class="app">
+  <header>
+    <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64'><rect rx='12' width='64' height='64' fill='%231b2430'/><text x='50%' y='55%' font-size='28' fill='%23bcd4e6' font-family='Arial' text-anchor='middle' alignment-baseline='middle'>R</text></svg>" alt="logo">
+    <div>
+      <h1>Tienda Rivas — Inventario de Camisas</h1>
+      <p class="muted">Registra, filtra, edita y comparte el inventario (LocalStorage + export/import JSON)</p>
+    </div>
+  </header>
+
+  <div class="panel grid">
+    <!-- top row: acciones y buscador -->
+    <div class="row" style="align-items:center;justify-content:space-between">
+      <div class="controls">
+        <button class="btn primary" id="btnAdd">➕ Añadir camisa</button>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn ghost small" id="btnExport">⤓ Exportar (.json)</button>
+          <label class="btn ghost small" for="fileImport">⤒ Importar</label>
+          <input type="file" id="fileImport" class="file-input" accept=".json,application/json">
+          <select id="importMode" title="Import mode" aria-label="Modo importación" style="padding:8px;border-radius:8px;border:1px solid #e6eef9">
+            <option value="replace">Reemplazar datos</option>
+            <option value="merge">Fusionar (mantener existentes)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row">
+        <input id="qSearch" type="search" placeholder="Buscar por estilo, color, observación..." style="min-width:220px">
+        <button class="btn ghost small" id="btnClearFilters">Limpiar filtros</button>
+      </div>
+    </div>
+
+    <!-- filtros -->
+    <div class="row" style="align-items:center;">
+      <div class="col">
+        <label class="small">Estilo</label>
+        <select id="fEstilo">
+          <option value="">Todos</option>
+        </select>
+      </div>
+      <div class="col">
+        <label class="small">Manga</label>
+        <select id="fManga">
+          <option value="">Todos</option>
+          <option value="Corta">Corta</option>
+          <option value="Larga">Larga</option>
+        </select>
+      </div>
+      <div class="col">
+        <label class="small">Corte</label>
+        <select id="fCorte">
+          <option value="">Todos</option>
+          <option value="Slim">Slim</option>
+          <option value="Recto">Recto</option>
+        </select>
+      </div>
+      <div class="col">
+        <label class="small">Género</label>
+        <select id="fGenero">
+          <option value="">Todos</option>
+        </select>
+      </div>
+      <div class="col">
+        <label class="small">Color</label>
+        <select id="fColor">
+          <option value="">Todos</option>
+        </select>
+      </div>
+      <div style="min-width:80px">
+        <label class="small">Talla</label>
+        <select id="fTalla">
+          <option value="">Todas</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- list -->
+    <div class="list">
+      <table id="tableInventory" class="panel" aria-live="polite">
+        <thead>
+          <tr>
+            <th>SKU / ID</th>
+            <th>Estilo · Manga · Corte</th>
+            <th>Género · Talla</th>
+            <th>Color</th>
+            <th>Stock</th>
+            <th>Precio</th>
+            <th>Observaciones</th>
+            <th style="width:120px">Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+
+      <div class="cards" id="cards"></div>
+    </div>
+
+    <footer>
+      <div class="small-note">Consejo: usa "Exportar" para obtener el archivo .json que puedes enviar a tu compañero. Él podrá importar y elegir reemplazar o fusionar datos.</div>
+      <div class="small-note">LocalStorage key: <span class="badge" id="lskey">rivas_inventario_v1</span></div>
+    </footer>
+  </div>
+</div>
+
+<!-- modal form -->
+<div class="modal" id="modal">
+  <div class="inner" role="dialog" aria-modal="true" aria-labelledby="formTitle">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <h2 id="formTitle" style="margin:0;font-size:16px">Añadir camisa</h2>
+      <div>
+        <button class="btn ghost small" id="btnCloseModal">Cerrar</button>
+      </div>
+    </div>
+
+    <form id="form">
+      <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));">
+        <div>
+          <label class="small">Estilo</label><br>
+          <select id="estilo" required></select>
+        </div>
+        <div>
+          <label class="small">Manga</label><br>
+          <select id="manga" required>
+            <option value="Corta">Corta</option>
+            <option value="Larga">Larga</option>
+          </select>
+        </div>
+        <div>
+          <label class="small">Corte</label><br>
+          <select id="corte" required>
+            <option value="Slim">Slim</option>
+            <option value="Recto">Recto</option>
+          </select>
+        </div>
+        <div>
+          <label class="small">Género</label><br>
+          <select id="genero" required></select>
+        </div>
+        <div>
+          <label class="small">Color</label><br>
+          <select id="color" required></select>
+        </div>
+        <div>
+          <label class="small">Talla</label><br>
+          <select id="talla" required></select>
+        </div>
+        <div>
+          <label class="small">Stock</label><br>
+          <input id="stock" type="number" min="0" value="1" required>
+        </div>
+        <div>
+          <label class="small">Precio</label><br>
+          <input id="precio" type="number" min="0" step="1" value="0" required>
+        </div>
+        <div style="grid-column:1 / -1">
+          <label class="small">Observaciones</label><br>
+          <textarea id="obs" rows="2" placeholder="Opcional..."></textarea>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+        <button type="button" class="btn ghost" id="btnResetForm">Limpiar</button>
+        <button type="submit" class="btn primary" id="btnSave">Guardar</button>
+      </div>
+
+      <input type="hidden" id="editingId" value="">
+    </form>
+  </div>
+</div>
+
+<!-- Agrega esto ANTES del script -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+
+
+
+(() => {
+  // --- CONFIGURACIÓN SUPABASE ---
+  const SUPABASE_URL = "https://uuaicdgiplbtcnsvbbiu.supabase.co";
+  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV1YWljZGdpcGxidGNuc3ZiYml1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIzNzA0NjEsImV4cCI6MjA3Nzk0NjQ2MX0.rzcUc0NJQR8yAFCvR-aEEQCj-6Nm9WsY0Ygfz-twAV0";
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  // --- CONFIG LOCAL ---
+  const STYLES = ["Outdoor","Elemental","Camo","Horizon","Livian", "Polo Abuelo", "Polo New Blood", "Polo Oldie", "Polo Golf", "Polo Limas", "Hoodies", "Básica M/L", "Básica M/C"];
+  const GENDERS = ["Caballero","Dama","Niño"];
+  const COLORS = [
+    "Plumbago","Blanco","Negro","Oxford","Vino","Beige","Rey","Botella",
+    "Green Bay","Muave Orchid","Militar","Marino","Lila","Petróleo","Machiato","Perla","Rojo","Pink Glow"
+  ];
+  const SIZES = ["XS","S","M","L","XL","2XL","3XL","4XL"];
+
+  // Elements
+  const el = id => document.getElementById(id);
+  const tbody = el("tbody");
+  const cards = el("cards");
+  const modal = el("modal");
+  const form = el("form");
+  const btnAdd = el("btnAdd");
+  const btnCloseModal = el("btnCloseModal");
+  const btnExport = el("btnExport");
+  const fileImport = el("fileImport");
+  const importMode = el("importMode");
+  const lsKeyBadge = el("lskey");
+  lsKeyBadge.textContent = "Supabase";
+
+  // inputs
+  const inputs = {
+    estilo: el("estilo"),
+    manga: el("manga"),
+    corte: el("corte"),
+    genero: el("genero"),
+    color: el("color"),
+    talla: el("talla"),
+    stock: el("stock"),
+    precio: el("precio"),
+    obs: el("obs"),
+    editingId: el("editingId")
+  };
+
+  // Filters
+  const fEstilo = el("fEstilo");
+  const fManga = el("fManga");
+  const fCorte = el("fCorte");
+  const fGenero = el("fGenero");
+  const fColor = el("fColor");
+  const fTalla = el("fTalla");
+  const qSearch = el("qSearch");
+  const btnClearFilters = el("btnClearFilters");
+
+  // Data
+  let data = [];
+
+  // --- UTILS ---
+  const uid = () => 'r-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,7);
+  const formatMoney = n => Number(n).toLocaleString('es-MX', {style:'currency', currency:'MXN', maximumFractionDigits:0});
+
+  // --- SUPABASE CRUD ---
+  async function load() {
+    const { data: rows, error } = await supabase.from('camisas').select('*').order('id', { ascending: false });
+    if (error) {
+      console.error("Error al cargar:", error);
+      alert("Error al cargar datos desde Supabase");
+      return;
+    }
+    data = rows || [];
+    render();
+  }
+
+  async function saveItem(item) {
+    const { error } = await supabase.from('camisas').insert([item]);
+    if (error) alert("Error al guardar en Supabase: " + error.message);
+  }
+
+  async function updateItem(id, payload) {
+    const { error } = await supabase.from('camisas').update(payload).eq('id', id);
+    if (error) alert("Error al actualizar: " + error.message);
+  }
+
+  async function removeItem(id) {
+    if (!confirm("¿Eliminar este registro?")) return;
+    const { error } = await supabase.from('camisas').delete().eq('id', id);
+    if (error) alert("Error al eliminar: " + error.message);
+    data = data.filter(d => d.id !== id);
+    render();
+  }
+
+  // --- RENDERING ---
+  function populateSelects(){
+    STYLES.forEach(s => { addOpt(inputs.estilo,s); addOpt(fEstilo,s); });
+    GENDERS.forEach(g => { addOpt(inputs.genero,g); addOpt(fGenero,g); });
+    COLORS.forEach(c => { addOpt(inputs.color,c); addOpt(fColor,c); });
+    SIZES.forEach(s => { addOpt(inputs.talla,s); addOpt(fTalla,s); });
+  }
+  function addOpt(sel,v){ const o=document.createElement('option');o.value=v;o.textContent=v;sel.appendChild(o); }
+
+  function render(){
+    const q = (qSearch.value||"").trim().toLowerCase();
+    const filters = { estilo:fEstilo.value, manga:fManga.value, corte:fCorte.value, genero:fGenero.value, color:fColor.value, talla:fTalla.value };
+
+    const filtered = data.filter(it=>{
+      if(filters.estilo && it.estilo!==filters.estilo) return false;
+      if(filters.manga && it.manga!==filters.manga) return false;
+      if(filters.corte && it.corte!==filters.corte) return false;
+      if(filters.genero && it.genero!==filters.genero) return false;
+      if(filters.color && it.color!==filters.color) return false;
+      if(filters.talla && it.talla!==filters.talla) return false;
+      if(q){
+        const hay = Object.values(it).join(' ').toLowerCase();
+        if(!hay.includes(q)) return false;
+      }
+      return true;
+    });
+
+    tbody.innerHTML = "";
+    cards.innerHTML = "";
+    filtered.forEach(it=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${it.id}</td>
+        <td><strong>${it.estilo}</strong><div class="muted">${it.manga} · ${it.corte}</div></td>
+        <td>${it.genero} · ${it.talla}</td>
+        <td>${it.color}</td>
+        <td>${it.stock}</td>
+        <td>${formatMoney(it.precio)}</td>
+        <td>${it.obs||''}</td>
+        <td><button class="btn small ghost" onclick="edit('${it.id}')">✏️</button>
+            <button class="btn small danger" onclick="del('${it.id}')">🗑️</button></td>`;
+      tbody.appendChild(tr);
+
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = `
+        <div><strong>${it.estilo} - ${it.color}</strong><br>
+        <small>${it.manga} · ${it.corte} · ${it.genero} · ${it.talla}</small></div>
+        <div style="display:flex;justify-content:space-between;margin-top:4px">
+          <span>${formatMoney(it.precio)}</span><span>Stock: ${it.stock}</span>
+        </div>
+        <div style="margin-top:6px">${it.obs||''}</div>
+        <div style="margin-top:6px;text-align:right">
+          <button class="btn small ghost" onclick="edit('${it.id}')">✏️</button>
+          <button class="btn small danger" onclick="del('${it.id}')">🗑️</button>
+        </div>`;
+      cards.appendChild(card);
+    });
+  }
+
+  // --- FORM HANDLING ---
+  function openModal(){ modal.classList.add('open'); }
+  function closeModal(){ modal.classList.remove('open'); form.reset(); inputs.editingId.value=""; }
+
+  window.edit = id => {
+    const it = data.find(d=>d.id===id);
+    if(!it) return;
+    Object.keys(inputs).forEach(k=>{ if(it[k]!==undefined && inputs[k]) inputs[k].value=it[k]; });
+    inputs.editingId.value = id;
+    openModal();
+  };
+  window.del = removeItem;
+
+  form.addEventListener('submit', async e=>{
+    e.preventDefault();
+    const payload = {
+      estilo:inputs.estilo.value,
+      manga:inputs.manga.value,
+      corte:inputs.corte.value,
+      genero:inputs.genero.value,
+      color:inputs.color.value,
+      talla:inputs.talla.value,
+      stock:Number(inputs.stock.value),
+      precio:Number(inputs.precio.value),
+      obs:inputs.obs.value.trim(),
+      id:inputs.editingId.value || uid()
+    };
+    if(inputs.editingId.value){
+      await updateItem(payload.id, payload);
+      const i = data.findIndex(d=>d.id===payload.id);
+      if(i>-1) data[i]=payload;
+    } else {
+      await saveItem(payload);
+      data.unshift(payload);
+    }
+    render();
+    closeModal();
+  });
+
+  // --- FILTROS ---
+  [fEstilo,fManga,fCorte,fGenero,fColor,fTalla,qSearch].forEach(x=>x.addEventListener('input',render));
+  btnClearFilters.addEventListener('click',()=>{[fEstilo,fManga,fCorte,fGenero,fColor,fTalla,qSearch].forEach(x=>x.value='');render();});
+  btnAdd.addEventListener('click',openModal);
+  btnCloseModal.addEventListener('click',closeModal);
+  modal.addEventListener('click',e=>{if(e.target===modal)closeModal();});
+
+  populateSelects();
+  load();
+})();
+</script>
+
+
+</body>
+</html>
